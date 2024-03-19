@@ -41,6 +41,10 @@ def treinar_knn():
     knn.fit(X, y)
     return knn
 
+@app.route('/')
+def home():
+    return 'KNN Academy!'
+
 @app.route('/aluno', methods=['POST'])
 def add_aluno():
     if request.method == 'POST':

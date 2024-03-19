@@ -1,8 +1,5 @@
 {
     "rewrites": [
-        {
-        "source": "/(.*)",
-        "destination": "/knn/app"
-        }
+        { "source": "/(.*)", "destination": "/knn/app" }
     ]
 }
