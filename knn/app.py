@@ -1,10 +1,17 @@
-from flask import Flask, request, jsonify, send_from_directory
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.figure import Figure
+from scipy.spatial import Voronoi, voronoi_plot_2d
+import matplotlib.pyplot as plt
+from flask import Flask, request, jsonify, send_file
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from sklearn.neighbors import KNeighborsClassifier
 import numpy as np
 from dotenv import load_dotenv
 import os
+import json
+import io
 
 app = Flask(__name__)
 
@@ -27,7 +34,7 @@ def treinar_knn():
     # Busca todos os alunos no banco de dados
     dados_alunos = list(alunos.find())
     # Prepara os dados para o treinamento
-    X = np.array([[a['altura'], a['peso'], a['IMC'], a['gordura_corporal']] for a in dados_alunos if 'categoria' in a])
+    X = np.array([[a['IMC'], a['gordura_corporal']] for a in dados_alunos if 'categoria' in a])
     y = np.array([a['categoria'] for a in dados_alunos if 'categoria' in a])
     # Cria e treina o KNN
     knn = KNeighborsClassifier(n_neighbors=3)
@@ -63,7 +70,7 @@ def add_aluno():
         knn = treinar_knn()
 
         # Realiza a predição para o aluno inserido
-        aluno_data = np.array([[dados_aluno['altura'], dados_aluno['peso'], dados_aluno['IMC'], dados_aluno['gordura_corporal']]])
+        aluno_data = np.array([[dados_aluno['IMC'], dados_aluno['gordura_corporal']]])
         print("Aluno data", aluno_data)
         predicao = knn.predict(aluno_data)
         print(predicao)
@@ -88,6 +95,50 @@ def get_aluno(id):
             return jsonify(aluno), 200
         else:
             return jsonify({'erro': 'Aluno não encontrado'}), 404
+
+@app.route('/stats') # Cria um gráfico de barras com a distribuição das categorias
+def estatisticas():
+    categorias = [aluno['categoria'] for aluno in alunos.find()]
+    categorias_count = [categorias.count(0), categorias.count(1)]
+
+    labels = ['Ganho de Massa', 'Perda de Peso']
+    fig = Figure()
+    axis = fig.add_subplot(1, 1, 1)
+    axis.bar(labels, categorias_count, color=['blue', 'orange'])
+    axis.set_title('Distribuição de Alunos por Categoria de Treino')
+    axis.set_xlabel('Categoria de Treino')
+    axis.set_ylabel('Número de Alunos')
+    axis.set_xticks(labels)
+    axis.set_yticks(np.arange(0, max(categorias_count) + 1, step=1))
+
+    output = io.BytesIO()
+    Figure.savefig(fig, output, format='png')
+    output.seek(0)
+
+    return send_file(output, mimetype='image/png')
+
+@app.route('/voronoi')
+def voronoi_diagram():
+    # Busca dados dos alunos para usar como pontos no diagrama de Voronoi
+    pontos = np.array([[aluno['IMC'], aluno['gordura_corporal']] for aluno in alunos.find()])
+
+    if len(pontos) < 2:
+        return jsonify({'erro': 'Não há dados suficientes para gerar o diagrama de Voronoi.'}), 400
+
+    # Gera o diagrama de Voronoi
+    vor = Voronoi(pontos)
+
+    # Cria uma figura e desenha o diagrama de Voronoi
+    fig = plt.figure()
+    voronoi_plot_2d(vor, show_vertices=False, point_size=3)
+    plt.title('Diagrama de Voronoi : IMC x Gordura Corporal')
+
+    img_bytes = io.BytesIO()
+    plt.savefig(img_bytes, format='png')
+    img_bytes.seek(0)
+    plt.close(fig)
+
+    return send_file(img_bytes, mimetype='image/png')
 
 if __name__ == '__main__':
     app.run(debug=False)
