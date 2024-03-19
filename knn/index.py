@@ -78,5 +78,16 @@ def add_aluno():
             'categoria_titulo': categoria(int(predicao[0]))
             }), 201
 
+@app.route('/aluno/<id>', methods=['GET'])
+def get_aluno(id):
+    if request.method == 'GET':
+        aluno = alunos.find_one({'_id': ObjectId(id)})
+        if aluno:
+            aluno['_id'] = str(aluno['_id'])
+            aluno['categoria_titulo'] = categoria(aluno['categoria'])
+            return jsonify(aluno), 200
+        else:
+            return jsonify({'erro': 'Aluno não encontrado'}), 404
+
 if __name__ == '__main__':
     app.run(debug=False)
