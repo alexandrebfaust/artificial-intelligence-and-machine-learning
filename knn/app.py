@@ -32,7 +32,7 @@ def treinar_knn():
     # Busca todos os alunos no banco de dados
     dados_alunos = list(alunos.find())
     # Prepara os dados para o treinamento
-    X = np.array([[a['altura'], a['peso'], a['IMC'], a['gordura_corporal']] for a in dados_alunos if 'categoria' in a])
+    X = np.array([[a['IMC'], a['gordura_corporal']] for a in dados_alunos if 'categoria' in a])
     y = np.array([a['categoria'] for a in dados_alunos if 'categoria' in a])
     # Cria e treina o KNN
     knn = KNeighborsClassifier(n_neighbors=3)
