@@ -1,6 +1,8 @@
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib.figure import Figure
+from scipy.spatial import Voronoi, voronoi_plot_2d
+import matplotlib.pyplot as plt
 from flask import Flask, request, jsonify, send_file
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -114,6 +116,29 @@ def estatisticas():
     output.seek(0)
 
     return send_file(output, mimetype='image/png')
+
+@app.route('/voronoi')
+def voronoi_diagram():
+    # Busca dados dos alunos para usar como pontos no diagrama de Voronoi
+    pontos = np.array([[aluno['IMC'], aluno['gordura_corporal']] for aluno in alunos.find()])
+
+    if len(pontos) < 2:
+        return jsonify({'erro': 'Não há dados suficientes para gerar o diagrama de Voronoi.'}), 400
+
+    # Gera o diagrama de Voronoi
+    vor = Voronoi(pontos)
+
+    # Cria uma figura e desenha o diagrama de Voronoi
+    fig = plt.figure()
+    voronoi_plot_2d(vor, show_vertices=False, point_size=3)
+    plt.title('Diagrama de Voronoi : IMC x Gordura Corporal')
+
+    img_bytes = io.BytesIO()
+    plt.savefig(img_bytes, format='png')
+    img_bytes.seek(0)
+    plt.close(fig)
+
+    return send_file(img_bytes, mimetype='image/png')
 
 if __name__ == '__main__':
     app.run(debug=False)
