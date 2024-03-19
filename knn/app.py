@@ -68,7 +68,7 @@ def add_aluno():
         knn = treinar_knn()
 
         # Realiza a predição para o aluno inserido
-        aluno_data = np.array([[dados_aluno['altura'], dados_aluno['peso'], dados_aluno['IMC'], dados_aluno['gordura_corporal']]])
+        aluno_data = np.array([[dados_aluno['IMC'], dados_aluno['gordura_corporal']]])
         print("Aluno data", aluno_data)
         predicao = knn.predict(aluno_data)
         print(predicao)
