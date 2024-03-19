@@ -1,10 +1,15 @@
-from flask import Flask, request, jsonify, send_from_directory
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.figure import Figure
+from flask import Flask, request, jsonify, send_file
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from sklearn.neighbors import KNeighborsClassifier
 import numpy as np
 from dotenv import load_dotenv
 import os
+import json
+import io
 
 app = Flask(__name__)
 
@@ -88,6 +93,27 @@ def get_aluno(id):
             return jsonify(aluno), 200
         else:
             return jsonify({'erro': 'Aluno não encontrado'}), 404
+
+@app.route('/stats') # Cria um gráfico de barras com a distribuição das categorias
+def estatisticas():
+    categorias = [aluno['categoria'] for aluno in alunos.find()]
+    categorias_count = [categorias.count(0), categorias.count(1)]
+
+    labels = ['Ganho de Massa', 'Perda de Peso']
+    fig = Figure()
+    axis = fig.add_subplot(1, 1, 1)
+    axis.bar(labels, categorias_count, color=['blue', 'orange'])
+    axis.set_title('Distribuição de Alunos por Categoria de Treino')
+    axis.set_xlabel('Categoria de Treino')
+    axis.set_ylabel('Número de Alunos')
+    axis.set_xticks(labels)
+    axis.set_yticks(np.arange(0, max(categorias_count) + 1, step=1))
+
+    output = io.BytesIO()
+    Figure.savefig(fig, output, format='png')
+    output.seek(0)
+
+    return send_file(output, mimetype='image/png')
 
 if __name__ == '__main__':
     app.run(debug=False)
