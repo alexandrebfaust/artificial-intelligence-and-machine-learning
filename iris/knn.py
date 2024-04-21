@@ -31,7 +31,7 @@ model.fit(X, y_encoded)
 print(f"Modelo treinado com k={best_k}")
 
 # Permitir entrada de novos dados para previsão
-def input_new_data():
+def predict_new_data():
     print("Insira as medidas para uma nova flor (SepalLength, SepalWidth, PetalLength, PetalWidth):")
     new_data = list(map(float, input().split()))
     new_data = np.array(new_data).reshape(1, -1)
@@ -39,7 +39,8 @@ def input_new_data():
     predicted_class = label_encoder.inverse_transform(prediction)
     print(f"A classe prevista é: {predicted_class[0]}")
 
-input_new_data()
+while True:
+    predict_new_data()
 
 #Dados para teste
 # 5.1 3.5 1.4 0.2 -> Iris-setosa
