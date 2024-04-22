@@ -9,7 +9,6 @@ data = pd.read_csv('Iris.csv')
 X = data[['SepalLengthCm', 'SepalWidthCm', 'PetalLengthCm', 'PetalWidthCm']]
 y = data['Species']
 
-# Preparar o codificador de rótulos
 label_encoder = LabelEncoder()
 y_encoded = label_encoder.fit_transform(y)
 
