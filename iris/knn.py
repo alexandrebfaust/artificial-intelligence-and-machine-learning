@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.model_selection import cross_val_score, KFold
+from sklearn.model_selection import KFold, cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
@@ -14,14 +14,12 @@ y_encoded = label_encoder.fit_transform(y)
 
 # Testar pelo menos duas alternativas de número de vizinhos mais próximos
 k_values = [3, 5]
-
-# Utilizar 10 fold cross validation
 kf = KFold(n_splits=10, shuffle=True, random_state=42)
 results = {}
 
 for k in k_values:
     knn = KNeighborsClassifier(n_neighbors=k)
-    cv_scores = cross_val_score(knn, X, y_encoded, cv=kf, scoring='accuracy')
+    cv_scores = cross_val_score(knn, X, y_encoded, cv=kf)
     results[k] = np.mean(cv_scores)
     print(f'Média da acurácia para k={k}: {np.mean(cv_scores):.4f} (+/- {np.std(cv_scores):.4f})')
 
@@ -30,14 +28,12 @@ model = KNeighborsClassifier(n_neighbors=best_k)
 model.fit(X, y_encoded)
 print(f"Modelo treinado com k={best_k}")
 
-# Permitir entrada de novos dados para previsão
 def predict_new_data():
-    print("Insira as medidas para uma nova flor (SepalLength, SepalWidth, PetalLength, PetalWidth):")
-    new_data = list(map(float, input().split()))
+    new_data = list(map(float, input("\nDigite as características da flor Iris para predição (SepalLength, SepalWidth, PetalLength, PetalWidth): ").split()))
     new_data = np.array(new_data).reshape(1, -1)
     prediction = model.predict(new_data)
-    predicted_class = label_encoder.inverse_transform(prediction)
-    print(f"A classe prevista é: {predicted_class[0]}")
+    predicted_species = label_encoder.inverse_transform(prediction)
+    print(f"A espécie prevista é: {predicted_species[0]}")
 
 while True:
     predict_new_data()
