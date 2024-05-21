@@ -1,47 +1,54 @@
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import SimpleRNN, Dense
+import pandas as pd
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Input
+import time  # Importando a biblioteca time
 
-# Gerar dados de sequência
-def generate_sequence(start, end):
-    return np.array([i for i in range(start, end+1, 3)])
+# Carregar dados de um arquivo CSV
+dados = pd.read_csv('dados.csv')
+dias = dados['dia'].values
+valores = dados['valor'].values
 
-# Preparar os dados para treinamento/teste
-def prepare_data(sequence, n_steps):
-    X, y = [], []
-    for i in range(len(sequence)):
-        # encontrar o fim do padrão
-        end_ix = i + n_steps
-        # checar se estamos além da sequência
-        if end_ix > len(sequence)-1:
-            break
-        # coletar input e output partes da sequência
-        seq_x, seq_y = sequence[i:end_ix], sequence[end_ix]
-        X.append(seq_x)
-        y.append(seq_y)
-    return np.array(X), np.array(y)
+# Normalizando os dados para o treinamento da rede
+max_valor = np.max(valores)
+valores_norm = valores / max_valor
 
-# Definir parâmetros
-n_steps = 3
-sequence = generate_sequence(0, 100)
-X, y = prepare_data(sequence, n_steps)
+# Preparando os dados para a LSTM: [samples, time steps, features]
+dias = dias.reshape((len(dias), 1, 1))
+valores_norm = valores_norm.reshape((len(valores_norm), 1))
 
-# Redimensionar X para o formato [samples, timesteps, features]
-X = X.reshape((X.shape[0], X.shape[1], 1))
-
-# Definir modelo
-model = Sequential([
-    SimpleRNN(50, activation='relu', input_shape=(n_steps, 1)),
-    Dense(1)
-])
+# Criando o modelo LSTM
+model = Sequential()
+model.add(Input(shape=(1, 1)))
+model.add(LSTM(50, activation='relu'))
+model.add(Dense(1))
 model.compile(optimizer='adam', loss='mse')
 
-# Treinar modelo
-model.fit(X, y, epochs=200, verbose=0)
+# Inicia a contagem de tempo
+start_time = time.time()
 
-# Demonstração de previsão
-x_input = np.array([81, 84, 87])
-x_input = x_input.reshape((1, n_steps, 1))
-yhat = model.predict(x_input, verbose=0)
-print(f'Next number prediction after [81, 84, 87] is {yhat[0][0]:.0f}')
+# Treinando o modelo
+model.fit(dias, valores_norm, epochs=1000, verbose=0)
+
+# Finaliza a contagem de tempo após o treinamento
+training_time = time.time() - start_time
+print(f"Tempo de treinamento: {training_time:.2f} segundos.")
+
+# Inicia a contagem de tempo para previsão
+start_time = time.time()
+
+# Prever o valor no dia 5
+dia_5 = np.array([5]).reshape((1, 1, 1))
+previsao_norm = model.predict(dia_5)
+
+# Finaliza a contagem de tempo para previsão
+prediction_time = time.time() - start_time
+print(f"Tempo de previsão: {prediction_time:.4f} segundos.")
+
+previsao = previsao_norm * max_valor
+print(f'Previsão do valor da ação no dia 5: {previsao[0][0]}')
+
+
+#ReLU: 1.303592324256897
+#Sigmoid: 1.0913374423980713
+
