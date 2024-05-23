@@ -10,8 +10,9 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc
+import joblib
 
-plot_graphs = False
+plot_graphs = True
 
 # Load the provided dataset
 file_path = 'src/08.csv'
@@ -54,6 +55,9 @@ data_reduced = data.drop(columns=columns_to_remove)
 # Separate features and target variable
 X = data_reduced.drop(columns=['0'])
 y = data_reduced['0']
+
+# Convert y from {1, 2} to {0, 1}
+y = y - 1
 
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -142,13 +146,15 @@ svm_grid_search = GridSearchCV(svm, svm_param_grid, cv=5, scoring='roc_auc')
 print("Fitting GridSearchCV...")
 print("KNN...")
 knn_grid_search.fit(X_train_selected_scaled, y_train)
-print("KNN Best Estimator:",knn_grid_search.best_estimator_)
 print("MLP...")
 mlp_grid_search.fit(X_train_selected_scaled, y_train)
-print("MLP Best Estimator:",mlp_grid_search.best_estimator_)
 print("SVM...")
 svm_grid_search.fit(X_train_selected_scaled, y_train)
-print("SVM Best Estimator:",svm_grid_search.best_estimator_)
+
+# Save the fitted GridSearchCV objects
+joblib.dump(knn_grid_search, 'knn_grid_search.pkl')
+joblib.dump(mlp_grid_search, 'mlp_grid_search.pkl')
+joblib.dump(svm_grid_search, 'svm_grid_search.pkl')
 
 # Get the best parameters and scores
 knn_best_params = knn_grid_search.best_params_
@@ -225,17 +231,18 @@ svm_scores = [svm_results[0], svm_results[1], svm_results[2], svm_results[3], sv
 
 x = range(len(metrics))
 
-plt.figure(figsize=(12, 6))
-plt.bar(x, baseline_scores, width=0.2, label='Baseline', align='center')
-plt.bar([p + 0.2 for p in x], knn_scores, width=0.2, label='KNN', align='center')
-plt.bar([p + 0.4 for p in x], mlp_scores, width=0.2, label='MLP', align='center')
-plt.bar([p + 0.6 for p in x], svm_scores, width=0.2, label='SVM', align='center')
-plt.xticks([p + 0.3 for p in x], metrics)
-plt.xlabel('Metrics')
-plt.ylabel('Scores')
-plt.title('Comparison of Classifier Performance with Baseline')
-plt.legend(loc='upper left')
-plt.show()
+if plot_graphs:
+    plt.figure(figsize=(12, 6))
+    plt.bar(x, baseline_scores, width=0.2, label='Baseline', align='center')
+    plt.bar([p + 0.2 for p in x], knn_scores, width=0.2, label='KNN', align='center')
+    plt.bar([p + 0.4 for p in x], mlp_scores, width=0.2, label='MLP', align='center')
+    plt.bar([p + 0.6 for p in x], svm_scores, width=0.2, label='SVM', align='center')
+    plt.xticks([p + 0.3 for p in x], metrics)
+    plt.xlabel('Metrics')
+    plt.ylabel('Scores')
+    plt.title('Comparison of Classifier Performance with Baseline')
+    plt.legend(loc='upper left')
+    plt.show()
 
 # Plot ROC curves
 plt.figure(figsize=(10, 6))
