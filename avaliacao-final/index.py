@@ -3,13 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc
+
+plot_graphs = False
 
 # Load the provided dataset
 file_path = 'src/08.csv'
@@ -23,10 +25,11 @@ data_head = data.head()
 correlation_matrix = data.corr()
 
 # Plot the heatmap
-plt.figure(figsize=(15, 15))
-sns.heatmap(correlation_matrix, cmap='coolwarm', annot=False, fmt='.2f')
-plt.title('Heatmap da Matriz de Correlação')
-plt.show()
+if plot_graphs:
+    plt.figure(figsize=(15, 15))
+    sns.heatmap(correlation_matrix, cmap='coolwarm', annot=False, fmt='.2f')
+    plt.title('Heatmap da Matriz de Correlação')
+    plt.show()
 
 # Identify highly correlated features (threshold > 0.85)
 correlation_threshold = 0.85
@@ -73,21 +76,23 @@ feature_importance_df = pd.DataFrame({
     'Importance': feature_importances
 }).sort_values(by='Importance', ascending=False)
 
-import ace_tools as tools; tools.display_dataframe_to_user(name="Feature Importances", dataframe=feature_importance_df)
+# Display the feature importance DataFrame
+print("Feature Importances:\n", feature_importance_df.head(10))
 
 # Plot distribution of the top 10 important features
 top_features = feature_importance_df.head(10)['Feature'].tolist()
 
 # Plotting
-fig, axes = plt.subplots(5, 2, figsize=(15, 20))
-axes = axes.flatten()
+if plot_graphs:
+    fig, axes = plt.subplots(5, 2, figsize=(15, 20))
+    axes = axes.flatten()
 
-for i, feature in enumerate(top_features):
-    sns.histplot(data[feature], bins=30, ax=axes[i], kde=True)
-    axes[i].set_title(f'Distribution of Feature {feature}')
-    
-plt.tight_layout()
-plt.show()
+    for i, feature in enumerate(top_features):
+        sns.histplot(data[feature], bins=30, ax=axes[i], kde=True)
+        axes[i].set_title(f'Distribution of Feature {feature}')
+        
+    plt.tight_layout()
+    plt.show()
 
 # Select top important features
 selected_features = feature_importance_df.head(10)['Feature'].tolist()
@@ -117,10 +122,15 @@ svm_param_grid = {
     'gamma': ['scale', 'auto']
 }
 
+print("Initialize models...")
+
 # Initialize models
 knn = KNeighborsClassifier()
-mlp = MLPClassifier(max_iter=1000, random_state=42)
+mlp = MLPClassifier(max_iter=10000, random_state=42)
 svm = SVC(probability=True, random_state=42)
+
+
+print("Initialize GridSearchCV...")
 
 # Initialize GridSearchCV
 knn_grid_search = GridSearchCV(knn, knn_param_grid, cv=5, scoring='roc_auc')
@@ -128,8 +138,12 @@ mlp_grid_search = GridSearchCV(mlp, mlp_param_grid, cv=5, scoring='roc_auc')
 svm_grid_search = GridSearchCV(svm, svm_param_grid, cv=5, scoring='roc_auc')
 
 # Fit the grid search to the data
+print("Fitting GridSearchCV...")
+print("KNN...")
 knn_grid_search.fit(X_selected_scaled, y)
+print("MLP...")
 mlp_grid_search.fit(X_selected_scaled, y)
+print("SVM...")
 svm_grid_search.fit(X_selected_scaled, y)
 
 # Get the best parameters and scores
@@ -141,7 +155,14 @@ knn_best_score = knn_grid_search.best_score_
 mlp_best_score = mlp_grid_search.best_score_
 svm_best_score = svm_grid_search.best_score_
 
-knn_best_params, knn_best_score, mlp_best_params, mlp_best_score, svm_best_params, svm_best_score
+print(f"KNN Best Params: {knn_best_params}, Best AUC-ROC: {knn_best_score}")
+print(f"MLP Best Params: {mlp_best_params}, Best AUC-ROC: {mlp_best_score}")
+print(f"SVM Best Params: {svm_best_params}, Best AUC-ROC: {svm_best_score}")
+
+# 08.csv
+# KNN Best Params: {'n_neighbors': 11, 'p': 2, 'weights': 'distance'}, Best AUC-ROC: 0.96984126984127
+# MLP Best Params: {'activation': 'relu', 'alpha': 0.0001, 'hidden_layer_sizes': (50, 50), 'learning_rate': 'adaptive', 'solver': 'sgd'}, Best AUC-ROC: 0.9745714285714285
+# SVM Best Params: {'C': 1, 'gamma': 'scale', 'kernel': 'rbf'}, Best AUC-ROC: 0.9821587301587302
 
 # Define a function to evaluate models using cross-validation
 def evaluate_model(model, X, y):
@@ -167,7 +188,7 @@ results_df = pd.DataFrame({
     'AUC-ROC': [knn_results[4], mlp_results[4], svm_results[4]]
 })
 
-import ace_tools as tools; tools.display_dataframe_to_user(name="Classifier Performance Comparison", dataframe=results_df)
+print("Classifier Performance Comparison:\n", results_df)
 
 # Train the Majority Class Classifier
 dummy_clf = DummyClassifier(strategy='most_frequent')
@@ -192,16 +213,16 @@ baseline_metrics = {
     'AUC-ROC': baseline_auc
 }
 
-baseline_metrics
+print("Baseline Metrics:\n", baseline_metrics)
 
 # Baseline scores
 baseline_scores = [baseline_accuracy, baseline_precision, baseline_recall, baseline_f1, baseline_auc]
 
 # Metrics
 metrics = ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'AUC-ROC']
-knn_scores = [0.52, 0.48, 0.49, 0.46, 0.678]
-mlp_scores = [0.83, 0.84, 0.83, 0.83, 0.923]
-svm_scores = [0.84, 0.84, 0.84, 0.84, 0.931]
+knn_scores = [knn_results[0], knn_results[1], knn_results[2], knn_results[3], knn_results[4]]
+mlp_scores = [mlp_results[0], mlp_results[1], mlp_results[2], mlp_results[3], mlp_results[4]]
+svm_scores = [svm_results[0], svm_results[1], svm_results[2], svm_results[3], svm_results[4]]
 
 x = range(len(metrics))
 
