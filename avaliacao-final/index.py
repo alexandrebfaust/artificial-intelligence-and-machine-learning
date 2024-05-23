@@ -52,8 +52,8 @@ for col1, col2 in high_corr_pairs:
 data_reduced = data.drop(columns=columns_to_remove)
 
 # Separate features and target variable
-X = data.drop(columns=['0'])
-y = data['0']
+X = data_reduced.drop(columns=['0'])
+y = data_reduced['0']
 
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -96,10 +96,12 @@ if plot_graphs:
 
 # Select top important features
 selected_features = feature_importance_df.head(10)['Feature'].tolist()
-X_selected = data[selected_features]
+X_train_selected = X_train[selected_features]
+X_test_selected = X_test[selected_features]
 
 # Standardize the selected features
-X_selected_scaled = scaler.fit_transform(X_selected)
+X_train_selected_scaled = scaler.fit_transform(X_train_selected)
+X_test_selected_scaled = scaler.transform(X_test_selected)
 
 # Define parameter grids for GridSearchCV
 knn_param_grid = {
@@ -129,7 +131,6 @@ knn = KNeighborsClassifier()
 mlp = MLPClassifier(max_iter=10000, random_state=42)
 svm = SVC(probability=True, random_state=42)
 
-
 print("Initialize GridSearchCV...")
 
 # Initialize GridSearchCV
@@ -140,11 +141,14 @@ svm_grid_search = GridSearchCV(svm, svm_param_grid, cv=5, scoring='roc_auc')
 # Fit the grid search to the data
 print("Fitting GridSearchCV...")
 print("KNN...")
-knn_grid_search.fit(X_selected_scaled, y)
+knn_grid_search.fit(X_train_selected_scaled, y_train)
+print("KNN Best Estimator:",knn_grid_search.best_estimator_)
 print("MLP...")
-mlp_grid_search.fit(X_selected_scaled, y)
+mlp_grid_search.fit(X_train_selected_scaled, y_train)
+print("MLP Best Estimator:",mlp_grid_search.best_estimator_)
 print("SVM...")
-svm_grid_search.fit(X_selected_scaled, y)
+svm_grid_search.fit(X_train_selected_scaled, y_train)
+print("SVM Best Estimator:",svm_grid_search.best_estimator_)
 
 # Get the best parameters and scores
 knn_best_params = knn_grid_search.best_params_
@@ -159,11 +163,6 @@ print(f"KNN Best Params: {knn_best_params}, Best AUC-ROC: {knn_best_score}")
 print(f"MLP Best Params: {mlp_best_params}, Best AUC-ROC: {mlp_best_score}")
 print(f"SVM Best Params: {svm_best_params}, Best AUC-ROC: {svm_best_score}")
 
-# 08.csv
-# KNN Best Params: {'n_neighbors': 11, 'p': 2, 'weights': 'distance'}, Best AUC-ROC: 0.96984126984127
-# MLP Best Params: {'activation': 'relu', 'alpha': 0.0001, 'hidden_layer_sizes': (50, 50), 'learning_rate': 'adaptive', 'solver': 'sgd'}, Best AUC-ROC: 0.9745714285714285
-# SVM Best Params: {'C': 1, 'gamma': 'scale', 'kernel': 'rbf'}, Best AUC-ROC: 0.9821587301587302
-
 # Define a function to evaluate models using cross-validation
 def evaluate_model(model, X, y):
     accuracy = cross_val_score(model, X, y, cv=10, scoring='accuracy').mean()
@@ -174,9 +173,9 @@ def evaluate_model(model, X, y):
     return accuracy, precision, recall, f1, auc
 
 # Evaluate each classifier
-knn_results = evaluate_model(knn, X_selected_scaled, y)
-mlp_results = evaluate_model(mlp, X_selected_scaled, y)
-svm_results = evaluate_model(svm, X_selected_scaled, y)
+knn_results = evaluate_model(knn, X_train_selected_scaled, y_train)
+mlp_results = evaluate_model(mlp, X_train_selected_scaled, y_train)
+svm_results = evaluate_model(svm, X_train_selected_scaled, y_train)
 
 # Compile the results into a DataFrame
 results_df = pd.DataFrame({
@@ -243,21 +242,21 @@ plt.figure(figsize=(10, 6))
 
 # KNN
 knn_best_model = knn_grid_search.best_estimator_
-y_scores_knn = knn_best_model.predict_proba(X_test_scaled)[:, 1]
+y_scores_knn = knn_best_model.predict_proba(X_test_selected_scaled)[:, 1]
 fpr_knn, tpr_knn, _ = roc_curve(y_test, y_scores_knn)
 roc_auc_knn = auc(fpr_knn, tpr_knn)
 plt.plot(fpr_knn, tpr_knn, label=f'KNN (AUC = {roc_auc_knn:.2f})')
 
 # MLP
 mlp_best_model = mlp_grid_search.best_estimator_
-y_scores_mlp = mlp_best_model.predict_proba(X_test_scaled)[:, 1]
+y_scores_mlp = mlp_best_model.predict_proba(X_test_selected_scaled)[:, 1]
 fpr_mlp, tpr_mlp, _ = roc_curve(y_test, y_scores_mlp)
 roc_auc_mlp = auc(fpr_mlp, tpr_mlp)
 plt.plot(fpr_mlp, tpr_mlp, label=f'MLP (AUC = {roc_auc_mlp:.2f})')
 
 # SVM
 svm_best_model = svm_grid_search.best_estimator_
-y_scores_svm = svm_best_model.predict_proba(X_test_scaled)[:, 1]
+y_scores_svm = svm_best_model.predict_proba(X_test_selected_scaled)[:, 1]
 fpr_svm, tpr_svm, _ = roc_curve(y_test, y_scores_svm)
 roc_auc_svm = auc(fpr_svm, tpr_svm)
 plt.plot(fpr_svm, tpr_svm, label=f'SVM (AUC = {roc_auc_svm:.2f})')
