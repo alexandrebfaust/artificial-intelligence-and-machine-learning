@@ -11,8 +11,9 @@ from sklearn.svm import SVC
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc
 import joblib
+import os
 
-plot_graphs = True
+plot_graphs = False
 
 # Load the provided dataset
 file_path = 'src/08.csv'
@@ -135,26 +136,39 @@ knn = KNeighborsClassifier()
 mlp = MLPClassifier(max_iter=10000, random_state=42)
 svm = SVC(probability=True, random_state=42)
 
-print("Initialize GridSearchCV...")
+print("Check for existing GridSearchCV files...")
 
-# Initialize GridSearchCV
-knn_grid_search = GridSearchCV(knn, knn_param_grid, cv=5, scoring='roc_auc')
-mlp_grid_search = GridSearchCV(mlp, mlp_param_grid, cv=5, scoring='roc_auc')
-svm_grid_search = GridSearchCV(svm, svm_param_grid, cv=5, scoring='roc_auc')
+# Check if GridSearchCV files exist
+knn_grid_search_file = 'knn_grid_search.pkl'
+mlp_grid_search_file = 'mlp_grid_search.pkl'
+svm_grid_search_file = 'svm_grid_search.pkl'
 
-# Fit the grid search to the data
-print("Fitting GridSearchCV...")
-print("KNN...")
-knn_grid_search.fit(X_train_selected_scaled, y_train)
-print("MLP...")
-mlp_grid_search.fit(X_train_selected_scaled, y_train)
-print("SVM...")
-svm_grid_search.fit(X_train_selected_scaled, y_train)
+if os.path.exists(knn_grid_search_file):
+    knn_grid_search = joblib.load(knn_grid_search_file)
+    print("Loaded existing KNN GridSearchCV model.")
+else:
+    knn_grid_search = GridSearchCV(knn, knn_param_grid, cv=5, scoring='roc_auc')
+    print("Fitting KNN GridSearchCV...")
+    knn_grid_search.fit(X_train_selected_scaled, y_train)
+    joblib.dump(knn_grid_search, knn_grid_search_file)
 
-# Save the fitted GridSearchCV objects
-joblib.dump(knn_grid_search, 'knn_grid_search.pkl')
-joblib.dump(mlp_grid_search, 'mlp_grid_search.pkl')
-joblib.dump(svm_grid_search, 'svm_grid_search.pkl')
+if os.path.exists(mlp_grid_search_file):
+    mlp_grid_search = joblib.load(mlp_grid_search_file)
+    print("Loaded existing MLP GridSearchCV model.")
+else:
+    mlp_grid_search = GridSearchCV(mlp, mlp_param_grid, cv=5, scoring='roc_auc')
+    print("Fitting MLP GridSearchCV...")
+    mlp_grid_search.fit(X_train_selected_scaled, y_train)
+    joblib.dump(mlp_grid_search, mlp_grid_search_file)
+
+if os.path.exists(svm_grid_search_file):
+    svm_grid_search = joblib.load(svm_grid_search_file)
+    print("Loaded existing SVM GridSearchCV model.")
+else:
+    svm_grid_search = GridSearchCV(svm, svm_param_grid, cv=5, scoring='roc_auc')
+    print("Fitting SVM GridSearchCV...")
+    svm_grid_search.fit(X_train_selected_scaled, y_train)
+    joblib.dump(svm_grid_search, svm_grid_search_file)
 
 # Get the best parameters and scores
 knn_best_params = knn_grid_search.best_params_
