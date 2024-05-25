@@ -15,283 +15,295 @@ import os
 
 plot_graphs = False
 
-# Load the provided dataset
-file_path = 'src/08.csv'
-data = pd.read_csv(file_path)
+# List of file paths
+file_list = ['src/08.csv', 'src/09.csv', 'src/28.csv']
 
-# Display basic information about the dataset
-data_info = data.info()
-data_head = data.head()
+def run_ml_pipeline(file_path):
 
-# Calculate the correlation matrix
-correlation_matrix = data.corr()
+    # Load the provided dataset
+    data = pd.read_csv(file_path)
+    filename = file_path.replace('src/', '').replace('.csv', '')
 
-# Plot the heatmap
-if plot_graphs:
-    plt.figure(figsize=(15, 15))
-    sns.heatmap(correlation_matrix, cmap='coolwarm', annot=False, fmt='.2f')
-    plt.title('Heatmap da Matriz de Correlação')
-    plt.show()
+    # Display basic information about the dataset
+    data_info = data.info()
+    data_head = data.head()
 
-# Identify highly correlated features (threshold > 0.85)
-correlation_threshold = 0.85
-high_corr_pairs = []
+    # Calculate the correlation matrix
+    correlation_matrix = data.corr()
 
-# Iterate over the correlation matrix
-for i in range(correlation_matrix.shape[0]):
-    for j in range(i):
-        if abs(correlation_matrix.iloc[i, j]) > correlation_threshold:
-            high_corr_pairs.append((correlation_matrix.columns[i], correlation_matrix.columns[j]))
+    # Plot the heatmap
+    if plot_graphs:
+        plt.figure(figsize=(15, 15))
+        sns.heatmap(correlation_matrix, cmap='coolwarm', annot=False, fmt='.2f')
+        plt.title('Heatmap da Matriz de Correlação')
+        plt.show()
 
-# Create a set to hold columns to remove
-columns_to_remove = set()
+    # Identify highly correlated features (threshold > 0.85)
+    correlation_threshold = 0.85
+    high_corr_pairs = []
 
-# Decide which columns to remove (keeping the first column and removing the second in each pair)
-for col1, col2 in high_corr_pairs:
-    columns_to_remove.add(col2)
+    # Iterate over the correlation matrix
+    for i in range(correlation_matrix.shape[0]):
+        for j in range(i):
+            if abs(correlation_matrix.iloc[i, j]) > correlation_threshold:
+                high_corr_pairs.append((correlation_matrix.columns[i], correlation_matrix.columns[j]))
 
-# Remove the identified columns from the dataset
-data_reduced = data.drop(columns=columns_to_remove)
+    # Create a set to hold columns to remove
+    columns_to_remove = set()
 
-# Separate features and target variable
-X = data_reduced.drop(columns=['0'])
-y = data_reduced['0']
+    # Decide which columns to remove (keeping the first column and removing the second in each pair)
+    for col1, col2 in high_corr_pairs:
+        columns_to_remove.add(col2)
 
-# Convert y from {1, 2} to {0, 1}
-y = y - 1
+    # Remove the identified columns from the dataset
+    data_reduced = data.drop(columns=columns_to_remove)
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Separate features and target variable
+    X = data_reduced.drop(columns=['0'])
+    y = data_reduced['0']
 
-# Standardize the data
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+    # Convert y from {1, 2} to {0, 1}
+    y = y - 1
 
-# Train a Random Forest model to get feature importances
-rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
-rf_model.fit(X_train_scaled, y_train)
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Get feature importances
-feature_importances = rf_model.feature_importances_
+    # Standardize the data
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-# Create a DataFrame for feature importances
-feature_importance_df = pd.DataFrame({
-    'Feature': X.columns,
-    'Importance': feature_importances
-}).sort_values(by='Importance', ascending=False)
+    # Train a Random Forest model to get feature importances
+    rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf_model.fit(X_train_scaled, y_train)
 
-# Display the feature importance DataFrame
-print("Feature Importances:\n", feature_importance_df.head(10))
+    # Get feature importances
+    feature_importances = rf_model.feature_importances_
 
-# Plot distribution of the top 10 important features
-top_features = feature_importance_df.head(10)['Feature'].tolist()
+    # Create a DataFrame for feature importances
+    feature_importance_df = pd.DataFrame({
+        'Feature': X.columns,
+        'Importance': feature_importances
+    }).sort_values(by='Importance', ascending=False)
 
-# Plotting
-if plot_graphs:
-    fig, axes = plt.subplots(5, 2, figsize=(15, 20))
-    axes = axes.flatten()
+    # Display the feature importance DataFrame
+    print("Feature Importances:\n", feature_importance_df.head(10))
 
-    for i, feature in enumerate(top_features):
-        sns.histplot(data[feature], bins=30, ax=axes[i], kde=True)
-        axes[i].set_title(f'Distribution of Feature {feature}')
-        
-    plt.tight_layout()
-    plt.show()
+    # Plot distribution of the top 10 important features
+    top_features = feature_importance_df.head(10)['Feature'].tolist()
 
-# Select top important features
-selected_features = feature_importance_df.head(10)['Feature'].tolist()
-X_train_selected = X_train[selected_features]
-X_test_selected = X_test[selected_features]
+    # Plotting
+    if plot_graphs:
+        fig, axes = plt.subplots(5, 2, figsize=(15, 20))
+        axes = axes.flatten()
 
-# Standardize the selected features
-X_train_selected_scaled = scaler.fit_transform(X_train_selected)
-X_test_selected_scaled = scaler.transform(X_test_selected)
+        for i, feature in enumerate(top_features):
+            sns.histplot(data[feature], bins=30, ax=axes[i], kde=True)
+            axes[i].set_title(f'Distribution of Feature {feature}')
+            
+        plt.tight_layout()
+        plt.show()
 
-# Define parameter grids for GridSearchCV
-knn_param_grid = {
-    'n_neighbors': [3, 5, 7, 9, 11],
-    'weights': ['uniform', 'distance'],
-    'p': [1, 2]
-}
+    # Select top important features
+    selected_features = feature_importance_df.head(10)['Feature'].tolist()
+    X_train_selected = X_train[selected_features]
+    X_test_selected = X_test[selected_features]
 
-mlp_param_grid = {
-    'hidden_layer_sizes': [(50,), (100,), (50,50), (100,100)],
-    'activation': ['identity', 'logistic', 'tanh', 'relu'],
-    'solver': ['lbfgs', 'sgd', 'adam'],
-    'alpha': [0.0001, 0.001, 0.01],
-    'learning_rate': ['constant', 'invscaling', 'adaptive']
-}
+    # Standardize the selected features
+    X_train_selected_scaled = scaler.fit_transform(X_train_selected)
+    X_test_selected_scaled = scaler.transform(X_test_selected)
 
-svm_param_grid = {
-    'C': [0.1, 1, 10, 100],
-    'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
-    'gamma': ['scale', 'auto']
-}
+    # Define parameter grids for GridSearchCV
+    knn_param_grid = {
+        'n_neighbors': [3, 5, 7, 9, 11],
+        'weights': ['uniform', 'distance'],
+        'p': [1, 2]
+    }
 
-print("Initialize models...")
+    mlp_param_grid = {
+        'hidden_layer_sizes': [(50,), (100,), (50,50), (100,100)],
+        'activation': ['identity', 'logistic', 'tanh', 'relu'],
+        'solver': ['lbfgs', 'sgd', 'adam'],
+        'alpha': [0.0001, 0.001, 0.01],
+        'learning_rate': ['constant', 'invscaling', 'adaptive']
+    }
 
-# Initialize models
-knn = KNeighborsClassifier()
-mlp = MLPClassifier(max_iter=10000, random_state=42)
-svm = SVC(probability=True, random_state=42)
+    svm_param_grid = {
+        'C': [0.1, 1, 10, 100],
+        'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+        'gamma': ['scale', 'auto']
+    }
 
-print("Check for existing GridSearchCV files...")
+    print("Initialize models...")
 
-# Check if GridSearchCV files exist
-knn_grid_search_file = 'knn_grid_search.pkl'
-mlp_grid_search_file = 'mlp_grid_search.pkl'
-svm_grid_search_file = 'svm_grid_search.pkl'
+    # Initialize models
+    knn = KNeighborsClassifier()
+    mlp = MLPClassifier(max_iter=10000, random_state=42)
+    svm = SVC(probability=True, random_state=42)
 
-if os.path.exists(knn_grid_search_file):
-    knn_grid_search = joblib.load(knn_grid_search_file)
-    print("Loaded existing KNN GridSearchCV model.")
-else:
-    knn_grid_search = GridSearchCV(knn, knn_param_grid, cv=5, scoring='roc_auc')
-    print("Fitting KNN GridSearchCV...")
-    knn_grid_search.fit(X_train_selected_scaled, y_train)
-    joblib.dump(knn_grid_search, knn_grid_search_file)
+    print("Check for existing GridSearchCV files...")
 
-if os.path.exists(mlp_grid_search_file):
-    mlp_grid_search = joblib.load(mlp_grid_search_file)
-    print("Loaded existing MLP GridSearchCV model.")
-else:
-    mlp_grid_search = GridSearchCV(mlp, mlp_param_grid, cv=5, scoring='roc_auc')
-    print("Fitting MLP GridSearchCV...")
-    mlp_grid_search.fit(X_train_selected_scaled, y_train)
-    joblib.dump(mlp_grid_search, mlp_grid_search_file)
+    # Check if GridSearchCV files exist
+    knn_grid_search_file = 'fit/'+filename+'_knn_grid_search.pkl'
+    mlp_grid_search_file = 'fit/'+filename+'_mlp_grid_search.pkl'
+    svm_grid_search_file = 'fit/'+filename+'_svm_grid_search.pkl'
 
-if os.path.exists(svm_grid_search_file):
-    svm_grid_search = joblib.load(svm_grid_search_file)
-    print("Loaded existing SVM GridSearchCV model.")
-else:
-    svm_grid_search = GridSearchCV(svm, svm_param_grid, cv=5, scoring='roc_auc')
-    print("Fitting SVM GridSearchCV...")
-    svm_grid_search.fit(X_train_selected_scaled, y_train)
-    joblib.dump(svm_grid_search, svm_grid_search_file)
+    if os.path.exists(knn_grid_search_file):
+        knn_grid_search = joblib.load(knn_grid_search_file)
+        print("Loaded existing KNN GridSearchCV model.")
+    else:
+        knn_grid_search = GridSearchCV(knn, knn_param_grid, cv=5, scoring='roc_auc')
+        print("Fitting KNN GridSearchCV...")
+        knn_grid_search.fit(X_train_selected_scaled, y_train)
+        joblib.dump(knn_grid_search, knn_grid_search_file)
 
-# Get the best parameters and scores
-knn_best_params = knn_grid_search.best_params_
-mlp_best_params = mlp_grid_search.best_params_
-svm_best_params = svm_grid_search.best_params_
+    if os.path.exists(mlp_grid_search_file):
+        mlp_grid_search = joblib.load(mlp_grid_search_file)
+        print("Loaded existing MLP GridSearchCV model.")
+    else:
+        mlp_grid_search = GridSearchCV(mlp, mlp_param_grid, cv=5, scoring='roc_auc')
+        print("Fitting MLP GridSearchCV...")
+        mlp_grid_search.fit(X_train_selected_scaled, y_train)
+        joblib.dump(mlp_grid_search, mlp_grid_search_file)
 
-knn_best_score = knn_grid_search.best_score_
-mlp_best_score = mlp_grid_search.best_score_
-svm_best_score = svm_grid_search.best_score_
+    if os.path.exists(svm_grid_search_file):
+        svm_grid_search = joblib.load(svm_grid_search_file)
+        print("Loaded existing SVM GridSearchCV model.")
+    else:
+        svm_grid_search = GridSearchCV(svm, svm_param_grid, cv=5, scoring='roc_auc')
+        print("Fitting SVM GridSearchCV...")
+        svm_grid_search.fit(X_train_selected_scaled, y_train)
+        joblib.dump(svm_grid_search, svm_grid_search_file)
 
-print(f"KNN Best Params: {knn_best_params}, Best AUC-ROC: {knn_best_score}")
-print(f"MLP Best Params: {mlp_best_params}, Best AUC-ROC: {mlp_best_score}")
-print(f"SVM Best Params: {svm_best_params}, Best AUC-ROC: {svm_best_score}")
+    # Get the best parameters and scores
+    knn_best_params = knn_grid_search.best_params_
+    mlp_best_params = mlp_grid_search.best_params_
+    svm_best_params = svm_grid_search.best_params_
 
-# Define a function to evaluate models using cross-validation
-def evaluate_model(model, X, y):
-    accuracy = cross_val_score(model, X, y, cv=10, scoring='accuracy').mean()
-    precision = cross_val_score(model, X, y, cv=10, scoring='precision_macro').mean()
-    recall = cross_val_score(model, X, y, cv=10, scoring='recall_macro').mean()
-    f1 = cross_val_score(model, X, y, cv=10, scoring='f1_macro').mean()
-    auc = cross_val_score(model, X, y, cv=10, scoring='roc_auc_ovr').mean()
-    return accuracy, precision, recall, f1, auc
+    knn_best_score = knn_grid_search.best_score_
+    mlp_best_score = mlp_grid_search.best_score_
+    svm_best_score = svm_grid_search.best_score_
 
-# Evaluate each classifier
-knn_results = evaluate_model(knn, X_train_selected_scaled, y_train)
-mlp_results = evaluate_model(mlp, X_train_selected_scaled, y_train)
-svm_results = evaluate_model(svm, X_train_selected_scaled, y_train)
+    print(f"KNN Best Params: {knn_best_params}, Best AUC-ROC: {knn_best_score}")
+    print(f"MLP Best Params: {mlp_best_params}, Best AUC-ROC: {mlp_best_score}")
+    print(f"SVM Best Params: {svm_best_params}, Best AUC-ROC: {svm_best_score}")
 
-# Compile the results into a DataFrame
-results_df = pd.DataFrame({
-    'Classifier': ['KNN', 'MLP', 'SVM'],
-    'Accuracy': [knn_results[0], mlp_results[0], svm_results[0]],
-    'Precision': [knn_results[1], mlp_results[1], svm_results[1]],
-    'Recall': [knn_results[2], mlp_results[2], svm_results[2]],
-    'F1-Score': [knn_results[3], mlp_results[3], svm_results[3]],
-    'AUC-ROC': [knn_results[4], mlp_results[4], svm_results[4]]
-})
+    # Define a function to evaluate models using cross-validation
+    def evaluate_model(model, X, y):
+        accuracy = cross_val_score(model, X, y, cv=10, scoring='accuracy').mean()
+        precision = cross_val_score(model, X, y, cv=10, scoring='precision_macro').mean()
+        recall = cross_val_score(model, X, y, cv=10, scoring='recall_macro').mean()
+        f1 = cross_val_score(model, X, y, cv=10, scoring='f1_macro').mean()
+        auc = cross_val_score(model, X, y, cv=10, scoring='roc_auc_ovr').mean()
+        return accuracy, precision, recall, f1, auc
 
-print("Classifier Performance Comparison:\n", results_df)
+    # Evaluate each classifier
+    knn_results = evaluate_model(knn, X_train_selected_scaled, y_train)
+    mlp_results = evaluate_model(mlp, X_train_selected_scaled, y_train)
+    svm_results = evaluate_model(svm, X_train_selected_scaled, y_train)
 
-# Train the Majority Class Classifier
-dummy_clf = DummyClassifier(strategy='most_frequent')
-dummy_clf.fit(X_train_scaled, y_train)
+    # Compile the results into a DataFrame
+    results_df = pd.DataFrame({
+        'Classifier': ['KNN', 'MLP', 'SVM'],
+        'Accuracy': [knn_results[0], mlp_results[0], svm_results[0]],
+        'Precision': [knn_results[1], mlp_results[1], svm_results[1]],
+        'Recall': [knn_results[2], mlp_results[2], svm_results[2]],
+        'F1-Score': [knn_results[3], mlp_results[3], svm_results[3]],
+        'AUC-ROC': [knn_results[4], mlp_results[4], svm_results[4]]
+    })
 
-# Predict on the test set
-y_dummy_pred = dummy_clf.predict(X_test_scaled)
-y_dummy_prob = dummy_clf.predict_proba(X_test_scaled)[:, 1]
+    print("Classifier Performance Comparison:\n", results_df)
 
-# Calculate baseline metrics
-baseline_accuracy = accuracy_score(y_test, y_dummy_pred)
-baseline_precision = precision_score(y_test, y_dummy_pred, average='macro')
-baseline_recall = recall_score(y_test, y_dummy_pred, average='macro')
-baseline_f1 = f1_score(y_test, y_dummy_pred, average='macro')
-baseline_auc = roc_auc_score(y_test, y_dummy_prob)
+    # Train the Majority Class Classifier
+    dummy_clf = DummyClassifier(strategy='most_frequent')
+    dummy_clf.fit(X_train_scaled, y_train)
 
-baseline_metrics = {
-    'Accuracy': baseline_accuracy,
-    'Precision': baseline_precision,
-    'Recall': baseline_recall,
-    'F1-Score': baseline_f1,
-    'AUC-ROC': baseline_auc
-}
+    # Predict on the test set
+    y_dummy_pred = dummy_clf.predict(X_test_scaled)
+    y_dummy_prob = dummy_clf.predict_proba(X_test_scaled)[:, 1]
 
-print("Baseline Metrics:\n", baseline_metrics)
+    # Calculate baseline metrics
+    baseline_accuracy = accuracy_score(y_test, y_dummy_pred)
+    baseline_precision = precision_score(y_test, y_dummy_pred, average='macro')
+    baseline_recall = recall_score(y_test, y_dummy_pred, average='macro')
+    baseline_f1 = f1_score(y_test, y_dummy_pred, average='macro')
+    baseline_auc = roc_auc_score(y_test, y_dummy_prob)
 
-# Baseline scores
-baseline_scores = [baseline_accuracy, baseline_precision, baseline_recall, baseline_f1, baseline_auc]
+    baseline_metrics = {
+        'Accuracy': baseline_accuracy,
+        'Precision': baseline_precision,
+        'Recall': baseline_recall,
+        'F1-Score': baseline_f1,
+        'AUC-ROC': baseline_auc
+    }
 
-# Metrics
-metrics = ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'AUC-ROC']
-knn_scores = [knn_results[0], knn_results[1], knn_results[2], knn_results[3], knn_results[4]]
-mlp_scores = [mlp_results[0], mlp_results[1], mlp_results[2], mlp_results[3], mlp_results[4]]
-svm_scores = [svm_results[0], svm_results[1], svm_results[2], svm_results[3], svm_results[4]]
+    print("Baseline Metrics:\n", baseline_metrics)
 
-x = range(len(metrics))
+    # Baseline scores
+    baseline_scores = [baseline_accuracy, baseline_precision, baseline_recall, baseline_f1, baseline_auc]
 
-if plot_graphs:
-    plt.figure(figsize=(12, 6))
-    plt.bar(x, baseline_scores, width=0.2, label='Baseline', align='center')
-    plt.bar([p + 0.2 for p in x], knn_scores, width=0.2, label='KNN', align='center')
-    plt.bar([p + 0.4 for p in x], mlp_scores, width=0.2, label='MLP', align='center')
-    plt.bar([p + 0.6 for p in x], svm_scores, width=0.2, label='SVM', align='center')
-    plt.xticks([p + 0.3 for p in x], metrics)
-    plt.xlabel('Metrics')
-    plt.ylabel('Scores')
-    plt.title('Comparison of Classifier Performance with Baseline')
-    plt.legend(loc='upper left')
-    plt.show()
+    # Metrics
+    metrics = ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'AUC-ROC']
+    knn_scores = [knn_results[0], knn_results[1], knn_results[2], knn_results[3], knn_results[4]]
+    mlp_scores = [mlp_results[0], mlp_results[1], mlp_results[2], mlp_results[3], mlp_results[4]]
+    svm_scores = [svm_results[0], svm_results[1], svm_results[2], svm_results[3], svm_results[4]]
 
-# Plot ROC curves
-plt.figure(figsize=(10, 6))
+    x = range(len(metrics))
 
-# KNN
-knn_best_model = knn_grid_search.best_estimator_
-y_scores_knn = knn_best_model.predict_proba(X_test_selected_scaled)[:, 1]
-fpr_knn, tpr_knn, _ = roc_curve(y_test, y_scores_knn)
-roc_auc_knn = auc(fpr_knn, tpr_knn)
-plt.plot(fpr_knn, tpr_knn, label=f'KNN (AUC = {roc_auc_knn:.2f})')
+    if plot_graphs:
+        plt.figure(figsize=(12, 6))
+        plt.bar(x, baseline_scores, width=0.2, label='Baseline', align='center')
+        plt.bar([p + 0.2 for p in x], knn_scores, width=0.2, label='KNN', align='center')
+        plt.bar([p + 0.4 for p in x], mlp_scores, width=0.2, label='MLP', align='center')
+        plt.bar([p + 0.6 for p in x], svm_scores, width=0.2, label='SVM', align='center')
+        plt.xticks([p + 0.3 for p in x], metrics)
+        plt.xlabel('Metrics')
+        plt.ylabel('Scores')
+        plt.title('Comparison of Classifier Performance with Baseline')
+        plt.legend(loc='upper left')
+        plt.show()
 
-# MLP
-mlp_best_model = mlp_grid_search.best_estimator_
-y_scores_mlp = mlp_best_model.predict_proba(X_test_selected_scaled)[:, 1]
-fpr_mlp, tpr_mlp, _ = roc_curve(y_test, y_scores_mlp)
-roc_auc_mlp = auc(fpr_mlp, tpr_mlp)
-plt.plot(fpr_mlp, tpr_mlp, label=f'MLP (AUC = {roc_auc_mlp:.2f})')
+    if plot_graphs:
+        # Plot ROC curves
+        plt.figure(figsize=(10, 6))
 
-# SVM
-svm_best_model = svm_grid_search.best_estimator_
-y_scores_svm = svm_best_model.predict_proba(X_test_selected_scaled)[:, 1]
-fpr_svm, tpr_svm, _ = roc_curve(y_test, y_scores_svm)
-roc_auc_svm = auc(fpr_svm, tpr_svm)
-plt.plot(fpr_svm, tpr_svm, label=f'SVM (AUC = {roc_auc_svm:.2f})')
+        # KNN
+        knn_best_model = knn_grid_search.best_estimator_
+        y_scores_knn = knn_best_model.predict_proba(X_test_selected_scaled)[:, 1]
+        fpr_knn, tpr_knn, _ = roc_curve(y_test, y_scores_knn)
+        roc_auc_knn = auc(fpr_knn, tpr_knn)
+        plt.plot(fpr_knn, tpr_knn, label=f'KNN (AUC = {roc_auc_knn:.2f})')
 
-# Dummy
-fpr_dummy, tpr_dummy, _ = roc_curve(y_test, y_dummy_prob)
-roc_auc_dummy = auc(fpr_dummy, tpr_dummy)
-plt.plot(fpr_dummy, tpr_dummy, label=f'Baseline (AUC = {roc_auc_dummy:.2f})')
+        # MLP
+        mlp_best_model = mlp_grid_search.best_estimator_
+        y_scores_mlp = mlp_best_model.predict_proba(X_test_selected_scaled)[:, 1]
+        fpr_mlp, tpr_mlp, _ = roc_curve(y_test, y_scores_mlp)
+        roc_auc_mlp = auc(fpr_mlp, tpr_mlp)
+        plt.plot(fpr_mlp, tpr_mlp, label=f'MLP (AUC = {roc_auc_mlp:.2f})')
 
-plt.plot([0, 1], [0, 1], 'k--')
-plt.xlim([0.0, 1.0])
-plt.ylim([0.0, 1.05])
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.title('Receiver Operating Characteristic (ROC) Curves')
-plt.legend(loc="lower right")
-plt.show()
+        # SVM
+        svm_best_model = svm_grid_search.best_estimator_
+        y_scores_svm = svm_best_model.predict_proba(X_test_selected_scaled)[:, 1]
+        fpr_svm, tpr_svm, _ = roc_curve(y_test, y_scores_svm)
+        roc_auc_svm = auc(fpr_svm, tpr_svm)
+        plt.plot(fpr_svm, tpr_svm, label=f'SVM (AUC = {roc_auc_svm:.2f})')
+
+        # Dummy
+        fpr_dummy, tpr_dummy, _ = roc_curve(y_test, y_dummy_prob)
+        roc_auc_dummy = auc(fpr_dummy, tpr_dummy)
+        plt.plot(fpr_dummy, tpr_dummy, label=f'Baseline (AUC = {roc_auc_dummy:.2f})')
+
+        plt.plot([0, 1], [0, 1], 'k--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic (ROC) Curves')
+        plt.legend(loc="lower right")
+        plt.show()
+
+
+# Run the ML pipeline for each file
+for file_path in file_list:
+    print(f"Running ML pipeline for file: {file_path}")
+    run_ml_pipeline(file_path)
