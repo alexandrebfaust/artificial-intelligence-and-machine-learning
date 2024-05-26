@@ -9,11 +9,11 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.dummy import DummyClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc, make_scorer
 import joblib
 import os
 
-plot_graphs = False
+plot_graphs = True
 
 # Lista de caminhos dos arquivos
 file_list = ['src/08.csv', 'src/09.csv', 'src/28.csv']
@@ -191,9 +191,9 @@ def run_ml_pipeline(file_path):
     # Definir uma função para avaliar modelos usando validação cruzada
     def evaluate_model(model, X, y):
         accuracy = cross_val_score(model, X, y, cv=10, scoring='accuracy').mean()
-        precision = cross_val_score(model, X, y, cv=10, scoring='precision_macro').mean()
-        recall = cross_val_score(model, X, y, cv=10, scoring='recall_macro').mean()
-        f1 = cross_val_score(model, X, y, cv=10, scoring='f1_macro').mean()
+        precision = cross_val_score(model, X, y, cv=10, scoring=make_scorer(precision_score, zero_division=0, average='macro')).mean()
+        recall = cross_val_score(model, X, y, cv=10, scoring=make_scorer(recall_score, zero_division=0, average='macro')).mean()
+        f1 = cross_val_score(model, X, y, cv=10, scoring=make_scorer(f1_score, zero_division=0, average='macro')).mean()
         auc = cross_val_score(model, X, y, cv=10, scoring='roc_auc_ovr').mean()
         return accuracy, precision, recall, f1, auc
 
@@ -224,9 +224,9 @@ def run_ml_pipeline(file_path):
 
     # Calcular métricas de baseline
     baseline_accuracy = accuracy_score(y_test, y_dummy_pred)
-    baseline_precision = precision_score(y_test, y_dummy_pred, average='macro')
-    baseline_recall = recall_score(y_test, y_dummy_pred, average='macro')
-    baseline_f1 = f1_score(y_test, y_dummy_pred, average='macro')
+    baseline_precision = precision_score(y_test, y_dummy_pred, average='macro', zero_division=0)
+    baseline_recall = recall_score(y_test, y_dummy_pred, average='macro', zero_division=0)
+    baseline_f1 = f1_score(y_test, y_dummy_pred, average='macro', zero_division=0)
     baseline_auc = roc_auc_score(y_test, y_dummy_prob)
 
     baseline_metrics = {
